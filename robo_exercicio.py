@@ -218,9 +218,9 @@ class Robo:
         # Verificar colisão
         if ambiente.verificar_colisao(novo_x, novo_y, self.raio):
             self.colisoes += 1
-            self.velocidade = 0.1  # Mantém velocidade mínima mesmo após colisão
-            # Tenta uma direção diferente após colisão
-            self.angulo += random.uniform(-np.pi/4, np.pi/4)
+            self.velocidade = 0.1  # Reduz velocidade drasticamente
+            self.angulo += random.uniform(np.pi/2, np.pi)  # Gira bruscamente para sair da colisão
+
         else:
             # Atualizar posição
             self.distancia_percorrida += np.sqrt((novo_x - self.x)**2 + (novo_y - self.y)**2)
@@ -534,6 +534,8 @@ class Simulador:
 # Deve modificar os parâmetros e a lógica para melhorar o desempenho.
 # =====================================================================
 
+# ATUALIZAÇÃO: Classe IndividuoPG com operadores booleanos e comparadores adicionados
+
 class IndividuoPG:
     def __init__(self, profundidade=3):
         self.profundidade = profundidade
@@ -546,19 +548,18 @@ class IndividuoPG:
             return self.criar_folha()
 
         operador = random.choice([
-            '+', '-', '*', '/', 'max', 'min', 'abs',
-            'if_positivo', 'if_negativo',
-            'sin', 'cos', 'tanh', 'log', 'clip'
+            '+', '-', '*', '/', 'max', 'min', 'abs', 'clip', 'if_positivo', 'if_negativo',
+            'gt', 'lt', 'eq', 'and', 'or', 'not', 'sin', 'cos', 'tanh', 'log'
         ])
 
-        if operador in ['+', '-', '*', '/', 'max', 'min', 'if_positivo', 'if_negativo', 'clip']:
+        if operador in ['+', '-', '*', '/', 'max', 'min', 'if_positivo', 'if_negativo', 'gt', 'lt', 'eq', 'and', 'or', 'clip']:
             return {
                 'tipo': 'operador',
                 'operador': operador,
                 'esquerda': IndividuoPG(self.profundidade - 1).criar_arvore_aleatoria(),
                 'direita': IndividuoPG(self.profundidade - 1).criar_arvore_aleatoria()
             }
-        elif operador in ['abs', 'sin', 'cos', 'tanh', 'log']:
+        elif operador in ['abs', 'not', 'sin', 'cos', 'tanh', 'log']:
             return {
                 'tipo': 'operador',
                 'operador': operador,
@@ -601,34 +602,26 @@ class IndividuoPG:
         op = no['operador']
 
         try:
-            if op == 'abs':
-                return abs(esquerda)
-            elif op == 'if_positivo':
-                return direita if esquerda > 0 else 0
-            elif op == 'if_negativo':
-                return direita if esquerda < 0 else 0
-            elif op == '+':
-                return esquerda + direita
-            elif op == '-':
-                return esquerda - direita
-            elif op == '*':
-                return esquerda * direita
-            elif op == '/':
-                return esquerda / direita if direita != 0 else 0
-            elif op == 'max':
-                return max(esquerda, direita)
-            elif op == 'min':
-                return min(esquerda, direita)
-            elif op == 'sin':
-                return np.sin(esquerda)
-            elif op == 'cos':
-                return np.cos(esquerda)
-            elif op == 'tanh':
-                return np.tanh(esquerda)
-            elif op == 'log':
-                return np.log(abs(esquerda)) if abs(esquerda) > 0 else 0
-            elif op == 'clip':
-                return np.clip(esquerda, -1, 1)
+            if op == 'abs': return abs(esquerda)
+            elif op == 'not': return 1.0 if esquerda <= 0 else 0.0
+            elif op == 'if_positivo': return direita if esquerda > 0 else 0
+            elif op == 'if_negativo': return direita if esquerda < 0 else 0
+            elif op == '+': return esquerda + direita
+            elif op == '-': return esquerda - direita
+            elif op == '*': return esquerda * direita
+            elif op == '/': return esquerda / direita if direita != 0 else 0
+            elif op == 'max': return max(esquerda, direita)
+            elif op == 'min': return min(esquerda, direita)
+            elif op == 'gt': return 1.0 if esquerda > direita else 0.0
+            elif op == 'lt': return 1.0 if esquerda < direita else 0.0
+            elif op == 'eq': return 1.0 if abs(esquerda - direita) < 1e-5 else 0.0
+            elif op == 'and': return 1.0 if esquerda > 0 and direita > 0 else 0.0
+            elif op == 'or': return 1.0 if esquerda > 0 or direita > 0 else 0.0
+            elif op == 'clip': return np.clip(esquerda, -1, 1)
+            elif op == 'sin': return np.sin(esquerda)
+            elif op == 'cos': return np.cos(esquerda)
+            elif op == 'tanh': return np.tanh(esquerda)
+            elif op == 'log': return np.log(abs(esquerda)) if abs(esquerda) > 0 else 0
         except:
             return 0
 
@@ -648,8 +641,9 @@ class IndividuoPG:
                     ])
             else:
                 no['operador'] = random.choice([
-                    '+', '-', '*', '/', 'max', 'min', 'abs',
-                    'if_positivo', 'if_negativo', 'sin', 'cos', 'tanh', 'log', 'clip'
+                    '+', '-', '*', '/', 'max', 'min', 'abs', 'clip',
+                    'if_positivo', 'if_negativo', 'gt', 'lt', 'eq', 'and', 'or', 'not',
+                    'sin', 'cos', 'tanh', 'log'
                 ])
 
         if no['tipo'] == 'operador':
@@ -664,7 +658,7 @@ class IndividuoPG:
         return novo
 
     def crossover_no(self, no1, no2):
-        return no1.copy() if random.random() < 0.5 else no2.copy()
+        return json.loads(json.dumps(no1 if random.random() < 0.5 else no2))
 
     def salvar(self, arquivo):
         with open(arquivo, 'w') as f:
@@ -728,7 +722,7 @@ class ProgramacaoGenetica:
                 fitness_tentativa = (
                     robo.recursos_coletados * 100 +  # Pontos por recursos coletados
                     robo.distancia_percorrida * 0.1 -  # Pontos por distância percorrida
-                    robo.colisoes * 50 -  # Penalidade por colisões
+                    robo.colisoes * 80 -  # Penalidade por colisões
                     (100 - robo.energia) * 0.5  # Penalidade por consumo de energia
                 )
                 
@@ -759,35 +753,28 @@ class ProgramacaoGenetica:
         return selecionados
     
     def evoluir(self, n_geracoes=50):
-        # NÚMERO DE GERAÇÕES PARA O ALUNO MODIFICAR
         for geracao in range(n_geracoes):
+        # Garante aleatoriedade a cada geração
+            random.seed()
+            np.random.seed()
+
             print(f"Geração {geracao + 1}/{n_geracoes}")
-            
-            # Avaliar população
             self.avaliar_populacao()
-            
-            # Registrar melhor fitness
+
             self.historico_fitness.append(self.melhor_fitness)
             print(f"Melhor fitness: {self.melhor_fitness:.2f}")
-            
-            # Selecionar indivíduos
+
             selecionados = self.selecionar()
-            
-            # Criar nova população
-            nova_populacao = []
-            
-            # Elitismo - manter o melhor indivíduo
-            nova_populacao.append(self.melhor_individuo)
-            
-            # Preencher o resto da população
-            while len(nova_populacao) < self.tamanho_populacao:
-                pai1, pai2 = random.sample(selecionados, 2)
-                filho = pai1.crossover(pai2)
-                filho.mutacao(probabilidade=0.1)  # PROBABILIDADE DE MUTAÇÃO PARA O ALUNO MODIFICAR
-                nova_populacao.append(filho)
-            
-            self.populacao = nova_populacao
-        
+            nova_populacao = [self.melhor_individuo]
+
+        while len(nova_populacao) < self.tamanho_populacao:
+            pai1, pai2 = random.sample(selecionados, 2)
+            filho = pai1.crossover(pai2)
+            filho.mutacao(probabilidade=0.1)
+            nova_populacao.append(filho)
+
+        self.populacao = nova_populacao
+
         return self.melhor_individuo, self.historico_fitness
 
 # =====================================================================
@@ -795,22 +782,25 @@ class ProgramacaoGenetica:
 # Esta parte contém a execução do programa e os parâmetros finais.
 # =====================================================================
 
-# Executando o algoritmo
+# (Importações e demais classes continuam as mesmas...)
+# Início da execução do programa
+# =====================================================================
+# PARTE 3: EXECUÇÃO DO PROGRAMA
+# =====================================================================
+
 if __name__ == "__main__":
     print("Iniciando simulação de robô com programação genética...")
-    
-    # Criar e treinar o algoritmo genético
     print("Treinando o algoritmo genético...")
-    # PARÂMETROS PARA O ALUNO MODIFICAR
+
     pg = ProgramacaoGenetica(tamanho_populacao=20, profundidade=4)
     melhor_individuo, historico = pg.evoluir(n_geracoes=5)
-    
-    # Salvar o melhor indivíduo
+
     print("Salvando o melhor indivíduo...")
     melhor_individuo.salvar('melhor_robo.json')
-    
-    # Plotar evolução do fitness
+
     print("Plotando evolução do fitness...")
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(10, 5))
     plt.plot(historico)
     plt.title('Evolução do Fitness')
@@ -818,14 +808,13 @@ if __name__ == "__main__":
     plt.ylabel('Fitness')
     plt.savefig('evolucao_fitness_robo.png')
     plt.close()
-    
-    # Simular o melhor indivíduo
+
     print("Simulando o melhor indivíduo...")
     ambiente = Ambiente()
     robo = Robo(ambiente.largura // 2, ambiente.altura // 2)
     simulador = Simulador(ambiente, robo, melhor_individuo)
-    
+
     print("Executando simulação em tempo real...")
     print("A simulação será exibida em uma janela separada.")
     print("Pressione Ctrl+C para fechar a janela quando desejar.")
-    simulador.simular() 
+    simulador.simular()
