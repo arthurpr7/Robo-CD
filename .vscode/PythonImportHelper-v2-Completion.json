@@ -1,0 +1,110 @@
+[
+    {
+        "label": "numpy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "numpy",
+        "description": "numpy",
+        "detail": "numpy",
+        "documentation": {}
+    },
+    {
+        "label": "random",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "random",
+        "description": "random",
+        "detail": "random",
+        "documentation": {}
+    },
+    {
+        "label": "matplotlib.pyplot",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "matplotlib.pyplot",
+        "description": "matplotlib.pyplot",
+        "detail": "matplotlib.pyplot",
+        "documentation": {}
+    },
+    {
+        "label": "matplotlib.patches",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "matplotlib.patches",
+        "description": "matplotlib.patches",
+        "detail": "matplotlib.patches",
+        "documentation": {}
+    },
+    {
+        "label": "matplotlib.animation",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "matplotlib.animation",
+        "description": "matplotlib.animation",
+        "detail": "matplotlib.animation",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "argparse",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "argparse",
+        "description": "argparse",
+        "detail": "argparse",
+        "documentation": {}
+    },
+    {
+        "label": "Ambiente",
+        "kind": 6,
+        "importPath": "robo_exercicio",
+        "description": "robo_exercicio",
+        "peekOfCode": "class Ambiente:\n    def __init__(self, largura=800, altura=600, num_obstaculos=5, num_recursos=5):\n        self.largura = largura\n        self.altura = altura\n        self.obstaculos = self.gerar_obstaculos(num_obstaculos)\n        self.recursos = self.gerar_recursos(num_recursos)\n        self.tempo = 0\n        self.max_tempo = 1000  # Tempo máximo de simulação\n        self.meta = self.gerar_meta()  # Adicionando a meta\n        self.meta_atingida = False  # Flag para controlar se a meta foi atingida",
+        "detail": "robo_exercicio",
+        "documentation": {}
+    },
+    {
+        "label": "Robo",
+        "kind": 6,
+        "importPath": "robo_exercicio",
+        "description": "robo_exercicio",
+        "peekOfCode": "class Robo:\n    def __init__(self, x, y, raio=15):\n        self.x = x\n        self.y = y\n        self.raio = raio\n        self.angulo = 0  # em radianos\n        self.velocidade = 0\n        self.energia = 100\n        self.recursos_coletados = 0\n        self.colisoes = 0",
+        "detail": "robo_exercicio",
+        "documentation": {}
+    },
+    {
+        "label": "Simulador",
+        "kind": 6,
+        "importPath": "robo_exercicio",
+        "description": "robo_exercicio",
+        "peekOfCode": "class Simulador:\n    def __init__(self, ambiente, robo, individuo):\n        self.ambiente = ambiente\n        self.robo = robo\n        self.individuo = individuo\n        self.frames = []\n        # Configurar matplotlib para melhor visualização\n        plt.style.use('default')\n        plt.ion()\n        self.fig, self.ax = plt.subplots(figsize=(12, 8))",
+        "detail": "robo_exercicio",
+        "documentation": {}
+    },
+    {
+        "label": "IndividuoPG",
+        "kind": 6,
+        "importPath": "robo_exercicio",
+        "description": "robo_exercicio",
+        "peekOfCode": "class IndividuoPG:\n    def __init__(self, profundidade=3):\n        self.profundidade = profundidade\n        self.arvore_aceleracao = self.criar_arvore_aleatoria()\n        self.arvore_rotacao = self.criar_arvore_aleatoria()\n        self.fitness = 0\n        self.idade = 0  # Novo: idade do indivíduo para controle de diversidade\n    def criar_arvore_aleatoria(self):\n        if self.profundidade == 0:\n            return self.criar_folha()",
+        "detail": "robo_exercicio",
+        "documentation": {}
+    },
+    {
+        "label": "ProgramacaoGenetica",
+        "kind": 6,
+        "importPath": "robo_exercicio",
+        "description": "robo_exercicio",
+        "peekOfCode": "class ProgramacaoGenetica:\n    def __init__(self, tamanho_populacao=100, profundidade=4):  # Aumentado tamanho e profundidade\n        self.tamanho_populacao = tamanho_populacao\n        self.profundidade = profundidade\n        self.populacao = [IndividuoPG(profundidade) for _ in range(tamanho_populacao)]\n        self.melhor_individuo = None\n        self.melhor_fitness = float('-inf')\n        self.historico_fitness = []\n        self.historico_diversidade = []\n        # Parâmetros de evolução otimizados",
+        "detail": "robo_exercicio",
+        "documentation": {}
+    }
+]
