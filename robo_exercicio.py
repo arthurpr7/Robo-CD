@@ -315,8 +315,8 @@ class Simulador:
         self.frames = []
         
         # Configurar matplotlib para melhor visualização
-        plt.style.use('default')  # Usar estilo padrão
-        plt.ion()  # Modo interativo
+        plt.style.use('default')
+        plt.ion()
         self.fig, self.ax = plt.subplots(figsize=(12, 8))
         self.ax.set_xlim(0, ambiente.largura)
         self.ax.set_ylim(0, ambiente.altura)
@@ -330,7 +330,6 @@ class Simulador:
         # Encontrar uma posição segura para o robô
         x_inicial, y_inicial = self.ambiente.posicao_segura(self.robo.raio)
         self.robo.reset(x_inicial, y_inicial)
-        self.frames = []
         
         # Limpar a figura atual
         self.ax.clear()
@@ -341,7 +340,7 @@ class Simulador:
         self.ax.set_ylabel("Y", fontsize=12)
         self.ax.grid(True, linestyle='--', alpha=0.7)
         
-        # Desenhar obstáculos (estáticos)
+        # Desenhar obstáculos
         for obstaculo in self.ambiente.obstaculos:
             rect = patches.Rectangle(
                 (obstaculo['x'], obstaculo['y']),
@@ -349,12 +348,12 @@ class Simulador:
                 obstaculo['altura'],
                 linewidth=1,
                 edgecolor='black',
-                facecolor='#FF9999',  # Vermelho claro
+                facecolor='#FF9999',
                 alpha=0.7
             )
             self.ax.add_patch(rect)
         
-        # Desenhar recursos (estáticos)
+        # Desenhar recursos
         for recurso in self.ambiente.recursos:
             if not recurso['coletado']:
                 circ = patches.Circle(
@@ -362,7 +361,7 @@ class Simulador:
                     10,
                     linewidth=1,
                     edgecolor='black',
-                    facecolor='#99FF99',  # Verde claro
+                    facecolor='#99FF99',
                     alpha=0.8
                 )
                 self.ax.add_patch(circ)
@@ -373,26 +372,36 @@ class Simulador:
             self.ambiente.meta['raio'],
             linewidth=2,
             edgecolor='black',
-            facecolor='#FFFF00',  # Amarelo
+            facecolor='#FFFF00',
             alpha=0.8
         )
         self.ax.add_patch(meta_circ)
         
-        # Criar objetos para o robô e direção (serão atualizados)
+        # Desenhar robô inicial
         robo_circ = patches.Circle(
             (self.robo.x, self.robo.y),
             self.robo.raio,
             linewidth=1,
             edgecolor='black',
-            facecolor='#9999FF',  # Azul claro
+            facecolor='#9999FF',
             alpha=0.8
         )
         self.ax.add_patch(robo_circ)
         
-        # Criar texto para informações
+        # Desenhar direção inicial do robô
+        direcao_x = self.robo.x + self.robo.raio * np.cos(self.robo.angulo)
+        direcao_y = self.robo.y + self.robo.raio * np.sin(self.robo.angulo)
+        self.ax.plot([self.robo.x, direcao_x], [self.robo.y, direcao_y], 'r-', linewidth=2)
+        
+        # Adicionar informações iniciais
         info_text = self.ax.text(
-            10, self.ambiente.altura - 50,  # Alterado de 10 para 50 para descer a legenda
-            "",
+            10, self.ambiente.altura - 50,
+            f"Tempo: {self.ambiente.tempo}\n"
+            f"Recursos: {self.robo.recursos_coletados}\n"
+            f"Energia: {self.robo.energia:.1f}\n"
+            f"Colisões: {self.robo.colisoes}\n"
+            f"Distância: {self.robo.distancia_percorrida:.1f}\n"
+            f"Meta atingida: {'Sim' if self.robo.meta_atingida else 'Não'}",
             fontsize=12,
             bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray', boxstyle='round,pad=0.5')
         )
@@ -417,7 +426,7 @@ class Simulador:
                 # Mover robô
                 sem_energia = self.robo.mover(aceleracao, rotacao, self.ambiente)
                 
-                # Atualizar visualização em tempo real
+                # Atualizar visualização
                 self.ax.clear()
                 self.ax.set_xlim(0, self.ambiente.largura)
                 self.ax.set_ylim(0, self.ambiente.altura)
@@ -426,7 +435,7 @@ class Simulador:
                 self.ax.set_ylabel("Y", fontsize=12)
                 self.ax.grid(True, linestyle='--', alpha=0.7)
                 
-                # Desenhar obstáculos
+                # Redesenhar todos os elementos
                 for obstaculo in self.ambiente.obstaculos:
                     rect = patches.Rectangle(
                         (obstaculo['x'], obstaculo['y']),
@@ -439,7 +448,6 @@ class Simulador:
                     )
                     self.ax.add_patch(rect)
                 
-                # Desenhar recursos
                 for recurso in self.ambiente.recursos:
                     if not recurso['coletado']:
                         circ = patches.Circle(
@@ -452,18 +460,16 @@ class Simulador:
                         )
                         self.ax.add_patch(circ)
                 
-                # Desenhar a meta
                 meta_circ = patches.Circle(
                     (self.ambiente.meta['x'], self.ambiente.meta['y']),
                     self.ambiente.meta['raio'],
                     linewidth=2,
                     edgecolor='black',
-                    facecolor='#FFFF00',  # Amarelo
+                    facecolor='#FFFF00',
                     alpha=0.8
                 )
                 self.ax.add_patch(meta_circ)
                 
-                # Desenhar robô
                 robo_circ = patches.Circle(
                     (self.robo.x, self.robo.y),
                     self.robo.raio,
@@ -474,14 +480,12 @@ class Simulador:
                 )
                 self.ax.add_patch(robo_circ)
                 
-                # Desenhar direção do robô
                 direcao_x = self.robo.x + self.robo.raio * np.cos(self.robo.angulo)
                 direcao_y = self.robo.y + self.robo.raio * np.sin(self.robo.angulo)
                 self.ax.plot([self.robo.x, direcao_x], [self.robo.y, direcao_y], 'r-', linewidth=2)
                 
-                # Adicionar informações
                 info_text = self.ax.text(
-                    10, self.ambiente.altura - 50,  # Alterado de 10 para 50 para descer a legenda
+                    10, self.ambiente.altura - 50,
                     f"Tempo: {self.ambiente.tempo}\n"
                     f"Recursos: {self.robo.recursos_coletados}\n"
                     f"Energia: {self.robo.energia:.1f}\n"
@@ -492,15 +496,12 @@ class Simulador:
                     bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray', boxstyle='round,pad=0.5')
                 )
                 
-                # Atualizar a figura
                 plt.draw()
                 plt.pause(0.05)
                 
-                # Verificar fim da simulação
                 if sem_energia or self.ambiente.passo():
                     break
             
-            # Manter a figura aberta até que o usuário a feche
             plt.ioff()
             plt.show()
             
@@ -542,14 +543,17 @@ class IndividuoPG:
         self.arvore_aceleracao = self.criar_arvore_aleatoria()
         self.arvore_rotacao = self.criar_arvore_aleatoria()
         self.fitness = 0
+        self.idade = 0  # Novo: idade do indivíduo para controle de diversidade
 
     def criar_arvore_aleatoria(self):
         if self.profundidade == 0:
             return self.criar_folha()
 
+        # Operadores otimizados para o problema
         operador = random.choice([
             '+', '-', '*', '/', 'max', 'min', 'abs', 'clip', 'if_positivo', 'if_negativo',
-            'gt', 'lt', 'eq', 'and', 'or', 'not', 'sin', 'cos', 'tanh', 'log'
+            'gt', 'lt', 'eq', 'and', 'or', 'not', 'sin', 'cos', 'tanh', 'log',
+            'sigmoid', 'relu', 'softplus'  # Novos operadores
         ])
 
         if operador in ['+', '-', '*', '/', 'max', 'min', 'if_positivo', 'if_negativo', 'gt', 'lt', 'eq', 'and', 'or', 'clip']:
@@ -559,7 +563,7 @@ class IndividuoPG:
                 'esquerda': IndividuoPG(self.profundidade - 1).criar_arvore_aleatoria(),
                 'direita': IndividuoPG(self.profundidade - 1).criar_arvore_aleatoria()
             }
-        elif operador in ['abs', 'not', 'sin', 'cos', 'tanh', 'log']:
+        elif operador in ['abs', 'not', 'sin', 'cos', 'tanh', 'log', 'sigmoid', 'relu', 'softplus']:
             return {
                 'tipo': 'operador',
                 'operador': operador,
@@ -622,18 +626,26 @@ class IndividuoPG:
             elif op == 'cos': return np.cos(esquerda)
             elif op == 'tanh': return np.tanh(esquerda)
             elif op == 'log': return np.log(abs(esquerda)) if abs(esquerda) > 0 else 0
+            elif op == 'sigmoid': return 1 / (1 + np.exp(-esquerda))  # Novo operador
+            elif op == 'relu': return max(0, esquerda)  # Novo operador
+            elif op == 'softplus': return np.log(1 + np.exp(esquerda))  # Novo operador
         except:
             return 0
 
     def mutacao(self, probabilidade=0.1):
-        self.mutacao_no(self.arvore_aceleracao, probabilidade)
-        self.mutacao_no(self.arvore_rotacao, probabilidade)
+        # Mutação adaptativa baseada na idade
+        prob_mutacao = probabilidade * (1 + self.idade * 0.1)  # Aumenta com a idade
+        self.mutacao_no(self.arvore_aceleracao, prob_mutacao)
+        self.mutacao_no(self.arvore_rotacao, prob_mutacao)
+        self.idade += 1
 
     def mutacao_no(self, no, probabilidade):
         if random.random() < probabilidade:
             if no['tipo'] == 'folha':
                 if 'valor' in no:
-                    no['valor'] = random.uniform(-5, 5)
+                    # Mutação gaussiana para constantes
+                    no['valor'] += random.gauss(0, 0.5)
+                    no['valor'] = np.clip(no['valor'], -5, 5)
                 elif 'variavel' in no:
                     no['variavel'] = random.choice([
                         'dist_recurso', 'dist_obstaculo', 'dist_meta',
@@ -643,7 +655,7 @@ class IndividuoPG:
                 no['operador'] = random.choice([
                     '+', '-', '*', '/', 'max', 'min', 'abs', 'clip',
                     'if_positivo', 'if_negativo', 'gt', 'lt', 'eq', 'and', 'or', 'not',
-                    'sin', 'cos', 'tanh', 'log'
+                    'sin', 'cos', 'tanh', 'log', 'sigmoid', 'relu', 'softplus'
                 ])
 
         if no['tipo'] == 'operador':
@@ -655,16 +667,22 @@ class IndividuoPG:
         novo = IndividuoPG(self.profundidade)
         novo.arvore_aceleracao = self.crossover_no(self.arvore_aceleracao, outro.arvore_aceleracao)
         novo.arvore_rotacao = self.crossover_no(self.arvore_rotacao, outro.arvore_rotacao)
+        novo.idade = 0  # Reset da idade para novos indivíduos
         return novo
 
     def crossover_no(self, no1, no2):
-        return json.loads(json.dumps(no1 if random.random() < 0.5 else no2))
+        # Crossover com preservação de características boas
+        if random.random() < 0.5:
+            return json.loads(json.dumps(no1))
+        else:
+            return json.loads(json.dumps(no2))
 
     def salvar(self, arquivo):
         with open(arquivo, 'w') as f:
             json.dump({
                 'arvore_aceleracao': self.arvore_aceleracao,
-                'arvore_rotacao': self.arvore_rotacao
+                'arvore_rotacao': self.arvore_rotacao,
+                'idade': self.idade
             }, f)
 
     @classmethod
@@ -674,18 +692,66 @@ class IndividuoPG:
             individuo = cls()
             individuo.arvore_aceleracao = dados['arvore_aceleracao']
             individuo.arvore_rotacao = dados['arvore_rotacao']
+            individuo.idade = dados.get('idade', 0)
             return individuo
 
 
 class ProgramacaoGenetica:
-    def __init__(self, tamanho_populacao=50, profundidade=3):
-        # PARÂMETROS PARA O ALUNO MODIFICAR
+    def __init__(self, tamanho_populacao=100, profundidade=3):
+        # Parâmetros otimizados
         self.tamanho_populacao = tamanho_populacao
         self.profundidade = profundidade
         self.populacao = [IndividuoPG(profundidade) for _ in range(tamanho_populacao)]
         self.melhor_individuo = None
         self.melhor_fitness = float('-inf')
         self.historico_fitness = []
+        self.historico_diversidade = []
+        
+        # Parâmetros de evolução otimizados
+        self.taxa_elitismo = 0.15  # Aumentado para 15% dos melhores indivíduos
+        self.taxa_mutacao = 0.3    # Aumentada para 30%
+        self.tamanho_torneio = 4   # Aumentado para 4
+        self.pressao_seletiva = 0.8  # Aumentada para 80%
+        self.taxa_crossover = 0.9   # Nova: taxa de crossover de 90%
+    
+    def calcular_diversidade(self):
+        # Calcula a diversidade da população baseada na distância média entre indivíduos
+        diversidade = 0
+        for i in range(len(self.populacao)):
+            for j in range(i + 1, len(self.populacao)):
+                # Compara as árvores de aceleração e rotação
+                dist_acel = self.distancia_arvores(
+                    self.populacao[i].arvore_aceleracao,
+                    self.populacao[j].arvore_aceleracao
+                )
+                dist_rot = self.distancia_arvores(
+                    self.populacao[i].arvore_rotacao,
+                    self.populacao[j].arvore_rotacao
+                )
+                diversidade += (dist_acel + dist_rot) / 2
+        return diversidade / (len(self.populacao) * (len(self.populacao) - 1) / 2)
+    
+    def distancia_arvores(self, arvore1, arvore2):
+        # Calcula a distância entre duas árvores
+        if arvore1['tipo'] != arvore2['tipo']:
+            return 1.0
+        
+        if arvore1['tipo'] == 'folha':
+            if 'valor' in arvore1 and 'valor' in arvore2:
+                return abs(arvore1['valor'] - arvore2['valor']) / 10
+            elif 'variavel' in arvore1 and 'variavel' in arvore2:
+                return 0.0 if arvore1['variavel'] == arvore2['variavel'] else 1.0
+            return 1.0
+        
+        dist_esq = self.distancia_arvores(arvore1['esquerda'], arvore2['esquerda'])
+        if arvore1['direita'] is None and arvore2['direita'] is None:
+            dist_dir = 0.0
+        elif arvore1['direita'] is None or arvore2['direita'] is None:
+            dist_dir = 1.0
+        else:
+            dist_dir = self.distancia_arvores(arvore1['direita'], arvore2['direita'])
+        
+        return (dist_esq + dist_dir) / 2 + (0.0 if arvore1['operador'] == arvore2['operador'] else 0.5)
     
     def avaliar_populacao(self):
         ambiente = Ambiente()
@@ -718,18 +784,26 @@ class ProgramacaoGenetica:
                     if sem_energia or ambiente.passo():
                         break
                 
-                # Calcular fitness
+                # Nova função de fitness otimizada
                 fitness_tentativa = (
-                    robo.recursos_coletados * 300 +  # Aumentado o peso dos recursos
-                    (500 if robo.meta_atingida else 0) -  # Pontuação extra se chegar à meta
-                    robo.colisoes * 30 -  # Penalidade reduzida por colisões
-                    (100 - robo.energia) * 0.3  # Penalidade mais branda por consumo
-               )
-
+                    robo.recursos_coletados * 1000 +  # Aumentado peso dos recursos
+                    (2000 if robo.meta_atingida else 0) +  # Bônus maior por atingir a meta
+                    (100 - robo.colisoes * 50) +  # Penalidade por colisões
+                    (robo.energia * 5) +  # Bônus por manter energia
+                    (2000 if robo.recursos_coletados == len(ambiente.recursos) else 0)  # Bônus por coletar todos os recursos
+                )
                 
-                # Adicionar pontos extras por atingir a meta
-                if robo.meta_atingida:
-                    fitness_tentativa += 500  # Pontos extras por atingir a meta
+                # Penalidade por não atingir a meta
+                if not robo.meta_atingida:
+                    fitness_tentativa -= 1000
+                
+                # Penalidade por morrer antes do tempo
+                if robo.energia <= 0:
+                    fitness_tentativa -= 500
+                
+                # Penalidade por não coletar recursos
+                if robo.recursos_coletados == 0:
+                    fitness_tentativa -= 300
                 
                 fitness += max(0, fitness_tentativa)
             
@@ -741,81 +815,136 @@ class ProgramacaoGenetica:
                 self.melhor_individuo = individuo
     
     def selecionar(self):
-        # MÉTODO DE SELEÇÃO PARA O ALUNO MODIFICAR
-        # Seleção por torneio
-        tamanho_torneio = 3  # TAMANHO DO TORNEIO PARA O ALUNO MODIFICAR
+        # Seleção por torneio com pressão seletiva
         selecionados = []
         
-        for _ in range(self.tamanho_populacao):
-            torneio = random.sample(self.populacao, tamanho_torneio)
-            vencedor = max(torneio, key=lambda x: x.fitness)
+        # Preservar elite
+        elite = sorted(self.populacao, key=lambda x: x.fitness, reverse=True)
+        n_elite = int(self.tamanho_populacao * self.taxa_elitismo)
+        selecionados.extend(elite[:n_elite])
+        
+        # Seleção por torneio para o resto da população
+        while len(selecionados) < self.tamanho_populacao:
+            # Selecionar candidatos para o torneio
+            candidatos = random.sample(self.populacao, self.tamanho_torneio)
+            
+            # Ordenar candidatos por fitness
+            candidatos.sort(key=lambda x: x.fitness, reverse=True)
+            
+            # Selecionar vencedor com base na pressão seletiva
+            if random.random() < self.pressao_seletiva:
+                vencedor = candidatos[0]  # Melhor candidato
+            else:
+                vencedor = random.choice(candidatos[1:])  # Outro candidato aleatório
+            
             selecionados.append(vencedor)
         
         return selecionados
     
     def evoluir(self, n_geracoes=50):
         for geracao in range(n_geracoes):
-        # Garante aleatoriedade a cada geração
+            # Garante aleatoriedade a cada geração
             random.seed()
             np.random.seed()
 
             print(f"Geração {geracao + 1}/{n_geracoes}")
+            
+            # Avaliar população
             self.avaliar_populacao()
-
+            
+            # Calcular e armazenar métricas
             self.historico_fitness.append(self.melhor_fitness)
+            diversidade = self.calcular_diversidade()
+            self.historico_diversidade.append(diversidade)
+            
             print(f"Melhor fitness: {self.melhor_fitness:.2f}")
+            print(f"Diversidade: {diversidade:.2f}")
 
+            # Selecionar indivíduos para próxima geração
             selecionados = self.selecionar()
-            nova_populacao = [self.melhor_individuo]
+            
+            # Criar nova população
+            nova_populacao = []
+            
+            # Preservar elite
+            elite = sorted(selecionados, key=lambda x: x.fitness, reverse=True)
+            n_elite = int(self.tamanho_populacao * self.taxa_elitismo)
+            nova_populacao.extend(elite[:n_elite])
+            
+            # Gerar resto da população
+            while len(nova_populacao) < self.tamanho_populacao:
+                # Selecionar pais
+                pai1, pai2 = random.sample(selecionados, 2)
+                
+                # Crossover com probabilidade
+                if random.random() < self.taxa_crossover:
+                    filho = pai1.crossover(pai2)
+                else:
+                    filho = IndividuoPG(self.profundidade)  # Novo indivíduo aleatório
+                
+                # Mutação
+                filho.mutacao(probabilidade=self.taxa_mutacao)
+                
+                nova_populacao.append(filho)
+            
+            self.populacao = nova_populacao
 
-        while len(nova_populacao) < self.tamanho_populacao:
-            pai1, pai2 = random.sample(selecionados, 2)
-            filho = pai1.crossover(pai2)
-            filho.mutacao(probabilidade=0.1)
-            nova_populacao.append(filho)
+        return self.melhor_individuo, self.historico_fitness, self.historico_diversidade
 
-        self.populacao = nova_populacao
-
-        return self.melhor_individuo, self.historico_fitness
-
-# =====================================================================
-# PARTE 3: EXECUÇÃO DO PROGRAMA (PARA O ALUNO MODIFICAR)
-# Esta parte contém a execução do programa e os parâmetros finais.
-# =====================================================================
-
-# (Importações e demais classes continuam as mesmas...)
-# Início da execução do programa
 # =====================================================================
 # PARTE 3: EXECUÇÃO DO PROGRAMA
 # =====================================================================
 
 if __name__ == "__main__":
-    print("Iniciando simulação de robô com programação genética...")
-    print("Treinando o algoritmo genético...")
-
-    pg = ProgramacaoGenetica(tamanho_populacao=20, profundidade=4)
-    melhor_individuo, historico = pg.evoluir(n_geracoes=5)
+    # Configurações da evolução (reduzidas para testes mais rápidos)
+    TAMANHO_POPULACAO = 20  # Reduzido de 100 para 20
+    PROFUNDIDADE = 3       # Reduzido de 4 para 3
+    NUM_GERACOES = 10      # Reduzido de 50 para 10
+    
+    # Criar ambiente e robô
+    ambiente = Ambiente()
+    robo = Robo(ambiente.largura // 2, ambiente.altura // 2)
+    
+    # Criar e executar a programação genética
+    pg = ProgramacaoGenetica(tamanho_populacao=TAMANHO_POPULACAO, profundidade=PROFUNDIDADE)
+    melhor_individuo, historico_fitness, historico_diversidade = pg.evoluir(n_geracoes=NUM_GERACOES)
 
     print("Salvando o melhor indivíduo...")
     melhor_individuo.salvar('melhor_robo.json')
 
-    print("Plotando evolução do fitness...")
-    import matplotlib.pyplot as plt
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(historico)
+    # Plotar gráficos de evolução
+    plt.figure(figsize=(15, 5))
+    
+    # Gráfico de fitness
+    plt.subplot(1, 2, 1)
+    plt.plot(historico_fitness, 'b-', label='Melhor Fitness')
     plt.title('Evolução do Fitness')
     plt.xlabel('Geração')
     plt.ylabel('Fitness')
+    plt.grid(True)
+    plt.legend()
+    
+    # Gráfico de diversidade
+    plt.subplot(1, 2, 2)
+    plt.plot(historico_diversidade, 'r-', label='Diversidade')
+    plt.title('Evolução da Diversidade')
+    plt.xlabel('Geração')
+    plt.ylabel('Diversidade')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.tight_layout()
     plt.savefig('evolucao_fitness_robo.png')
     plt.close()
 
-    print("Simulando o melhor indivíduo...")
-    ambiente = Ambiente()
-    robo = Robo(ambiente.largura // 2, ambiente.altura // 2)
+    # Simular o melhor indivíduo
+    print("\nSimulando o melhor indivíduo...")
+    
+    # Resetar ambiente e robô
+    ambiente.reset()
+    x_inicial, y_inicial = ambiente.posicao_segura(robo.raio)
+    robo.reset(x_inicial, y_inicial)
+    
+    # Criar e executar simulação
     simulador = Simulador(ambiente, robo, melhor_individuo)
-
-    print("Executando simulação em tempo real...")
-    print("A simulação será exibida em uma janela separada.")
-    print("Pressione Ctrl+C para fechar a janela quando desejar.")
     simulador.simular()
