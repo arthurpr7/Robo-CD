@@ -16,42 +16,99 @@ class Ambiente:
     def __init__(self, largura=800, altura=600, num_obstaculos=5, num_recursos=5):
         self.largura = largura
         self.altura = altura
-        self.obstaculos = self.gerar_obstaculos(num_obstaculos)
-        self.recursos = self.gerar_recursos(num_recursos)
+        self.obstaculos = []  # Inicializa lista vazia
+        self.recursos = []    # Inicializa lista vazia
         self.tempo = 0
         self.max_tempo = 1000  # Tempo máximo de simulação
-        self.meta = self.gerar_meta()  # Adicionando a meta
         self.meta_atingida = False  # Flag para controlar se a meta foi atingida
+        
+        # Agora gera os elementos na ordem correta
+        self.obstaculos = self.gerar_obstaculos(num_obstaculos)
+        self.recursos = self.gerar_recursos(num_recursos)
+        self.meta = self.gerar_meta()  # Adicionando a meta
+    
+    def verificar_sobreposicao(self, x, y, raio=0, largura=0, altura=0):
+        """Verifica se uma posição está sobrepondo outros elementos"""
+        # Verificar sobreposição com obstáculos
+        for obstaculo in self.obstaculos:
+            if (x + raio > obstaculo['x'] and 
+                x - raio < obstaculo['x'] + obstaculo['largura'] and
+                y + raio > obstaculo['y'] and 
+                y - raio < obstaculo['y'] + obstaculo['altura']):
+                return True
+        
+        # Verificar sobreposição com recursos
+        for recurso in self.recursos:
+            dist = np.sqrt((x - recurso['x'])**2 + (y - recurso['y'])**2)
+            if dist < raio + 20:  # 20 é o raio mínimo entre elementos
+                return True
+        
+        # Verificar sobreposição com meta
+        if hasattr(self, 'meta'):
+            dist = np.sqrt((x - self.meta['x'])**2 + (y - self.meta['y'])**2)
+            if dist < raio + self.meta['raio'] + 20:
+                return True
+        
+        return False
     
     def gerar_obstaculos(self, num_obstaculos):
         obstaculos = []
+        max_tentativas = 100
+        
         for _ in range(num_obstaculos):
-            x = random.randint(50, self.largura - 50)
-            y = random.randint(50, self.altura - 50)
-            largura = random.randint(20, 100)
-            altura = random.randint(20, 100)
-            obstaculos.append({
-                'x': x,
-                'y': y,
-                'largura': largura,
-                'altura': altura
-            })
+            tentativas = 0
+            while tentativas < max_tentativas:
+                x = random.randint(50, self.largura - 50)
+                y = random.randint(50, self.altura - 50)
+                largura = random.randint(20, 100)
+                altura = random.randint(20, 100)
+                
+                # Verificar sobreposição com outros obstáculos
+                sobreposicao = False
+                for obstaculo in obstaculos:
+                    if (x + largura > obstaculo['x'] and 
+                        x < obstaculo['x'] + obstaculo['largura'] and
+                        y + altura > obstaculo['y'] and 
+                        y < obstaculo['y'] + obstaculo['altura']):
+                        sobreposicao = True
+                        break
+                
+                if not sobreposicao:
+                    obstaculos.append({
+                        'x': x,
+                        'y': y,
+                        'largura': largura,
+                        'altura': altura
+                    })
+                    break
+                
+                tentativas += 1
+        
         return obstaculos
     
     def gerar_recursos(self, num_recursos):
         recursos = []
+        max_tentativas = 100
+        
         for _ in range(num_recursos):
-            x = random.randint(20, self.largura - 20)
-            y = random.randint(20, self.altura - 20)
-            recursos.append({
-                'x': x,
-                'y': y,
-                'coletado': False
-            })
+            tentativas = 0
+            while tentativas < max_tentativas:
+                x = random.randint(20, self.largura - 20)
+                y = random.randint(20, self.altura - 20)
+                
+                if not self.verificar_sobreposicao(x, y, raio=20):
+                    recursos.append({
+                        'x': x,
+                        'y': y,
+                        'coletado': False
+                    })
+                    break
+                
+                tentativas += 1
+        
         return recursos
     
     def gerar_meta(self):
-        # Gerar a meta em uma posição segura, longe dos obstáculos
         max_tentativas = 100
         margem = 50  # Margem das bordas
         
@@ -59,19 +116,7 @@ class Ambiente:
             x = random.randint(margem, self.largura - margem)
             y = random.randint(margem, self.altura - margem)
             
-            # Verificar se a posição está longe o suficiente dos obstáculos
-            posicao_segura = True
-            for obstaculo in self.obstaculos:
-                # Calcular a distância até o obstáculo mais próximo
-                dist_x = max(obstaculo['x'] - x, 0, x - (obstaculo['x'] + obstaculo['largura']))
-                dist_y = max(obstaculo['y'] - y, 0, y - (obstaculo['y'] + obstaculo['altura']))
-                dist = np.sqrt(dist_x**2 + dist_y**2)
-                
-                if dist < 50:  # 50 pixels de margem extra
-                    posicao_segura = False
-                    break
-            
-            if posicao_segura:
+            if not self.verificar_sobreposicao(x, y, raio=30):
                 return {
                     'x': x,
                     'y': y,
