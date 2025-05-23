@@ -742,7 +742,7 @@ class IndividuoPG:
 
 
 class ProgramacaoGenetica:
-    def __init__(self, tamanho_populacao=100, profundidade=4):  # Aumentado tamanho e profundidade
+    def __init__(self, tamanho_populacao=200, profundidade=5):  # Aumentado população e profundidade
         self.tamanho_populacao = tamanho_populacao
         self.profundidade = profundidade
         self.populacao = [IndividuoPG(profundidade) for _ in range(tamanho_populacao)]
@@ -752,11 +752,11 @@ class ProgramacaoGenetica:
         self.historico_diversidade = []
         
         # Parâmetros de evolução otimizados
-        self.taxa_elitismo = 0.2     # Aumentado para 20% dos melhores indivíduos
-        self.taxa_mutacao = 0.25     # Taxa de mutação equilibrada
-        self.tamanho_torneio = 5     # Aumentado para 5
-        self.pressao_seletiva = 0.85 # Aumentada para 85%
-        self.taxa_crossover = 0.95   # Aumentada para 95%
+        self.taxa_elitismo = 0.15    # Reduzido para 15% para manter mais diversidade
+        self.taxa_mutacao = 0.3      # Aumentado para 30% para mais exploração
+        self.tamanho_torneio = 7     # Aumentado para 7 para seleção mais rigorosa
+        self.pressao_seletiva = 0.9  # Aumentada para 90% para seleção mais forte
+        self.taxa_crossover = 0.9    # Ajustado para 90% para balancear com mutação
     
     def calcular_diversidade(self):
         # Calcula a diversidade da população baseada na distância média entre indivíduos
@@ -804,8 +804,8 @@ class ProgramacaoGenetica:
         for individuo in self.populacao:
             fitness = 0
             
-            # Simular 8 tentativas para melhor avaliação
-            for _ in range(8):
+            # Simular 12 tentativas para melhor avaliação (aumentado de 8 para 12)
+            for _ in range(12):
                 ambiente.reset()
                 x_inicial, y_inicial = ambiente.posicao_segura(robo.raio)
                 robo.reset(x_inicial, y_inicial)
@@ -815,6 +815,7 @@ class ProgramacaoGenetica:
                 ultima_distancia_recurso = float('inf')
                 tempo_sem_progresso = 0
                 recursos_coletados_anterior = 0
+                recursos_totais = len(ambiente.recursos)
                 
                 while True:
                     sensores = robo.get_sensores(ambiente)
@@ -839,40 +840,44 @@ class ProgramacaoGenetica:
                     
                     sem_energia = robo.mover(aceleracao, rotacao, ambiente)
                     
-                    # Fitness em tempo real
+                    # Fitness em tempo real com pesos ajustados
                     fitness_tentativa = (
-                        # Pontuação base
-                        robo.recursos_coletados * 1500 +  # Aumentado peso dos recursos
-                        (3000 if robo.meta_atingida else 0) +  # Bônus maior por atingir a meta
+                        # Pontuação base (aumentada)
+                        robo.recursos_coletados * 2000 +  # Aumentado de 1500 para 2000
+                        (4000 if robo.meta_atingida else 0) +  # Aumentado de 3000 para 4000
                         
-                        # Bônus por progresso
-                        (1000 if robo.recursos_coletados > recursos_coletados_anterior else 0) +  # Bônus por coletar novo recurso
-                        (500 if distancia_meta_atual < ultima_distancia_meta else 0) +  # Bônus por se aproximar da meta
-                        (300 if distancia_recurso_atual < ultima_distancia_recurso else 0) +  # Bônus por se aproximar de recurso
+                        # Bônus por progresso (aumentado)
+                        (1500 if robo.recursos_coletados > recursos_coletados_anterior else 0) +  # Aumentado de 1000 para 1500
+                        (800 if distancia_meta_atual < ultima_distancia_meta else 0) +  # Aumentado de 500 para 800
+                        (500 if distancia_recurso_atual < ultima_distancia_recurso else 0) +  # Aumentado de 300 para 500
                         
-                        # Bônus por eficiência
-                        (robo.energia * 10) +  # Bônus por manter energia
-                        (2000 if robo.recursos_coletados == len(ambiente.recursos) else 0) +  # Bônus por coletar todos
-                        (1000 if robo.meta_atingida and robo.recursos_coletados > 0 else 0)  # Bônus por atingir meta com recursos
+                        # Bônus por eficiência (aumentado)
+                        (robo.energia * 15) +  # Aumentado de 10 para 15
+                        (3000 if robo.recursos_coletados == recursos_totais else 0) +  # Aumentado de 2000 para 3000
+                        (2000 if robo.meta_atingida and robo.recursos_coletados > 0 else 0) +  # Aumentado de 1000 para 2000
+                        
+                        # Bônus por completude
+                        (5000 if robo.recursos_coletados == recursos_totais and robo.meta_atingida else 0)  # Novo bônus
                     )
                     
-                    # Penalidades
+                    # Penalidades (ajustadas)
                     fitness_tentativa -= (
-                        robo.colisoes * 200 +  # Penalidade por colisões
-                        (tempo_sem_progresso * 10) +  # Penalidade por ficar parado
-                        (1000 if not robo.meta_atingida else 0) +  # Penalidade por não atingir meta
-                        (500 if robo.energia <= 0 else 0) +  # Penalidade por morrer
-                        (300 if robo.recursos_coletados == 0 else 0)  # Penalidade por não coletar recursos
+                        robo.colisoes * 300 +  # Aumentado de 200 para 300
+                        (tempo_sem_progresso * 15) +  # Aumentado de 10 para 15
+                        (2000 if not robo.meta_atingida else 0) +  # Aumentado de 1000 para 2000
+                        (800 if robo.energia <= 0 else 0) +  # Aumentado de 500 para 800
+                        (500 if robo.recursos_coletados == 0 else 0) +  # Aumentado de 300 para 500
+                        (1000 if robo.recursos_coletados < recursos_totais/2 else 0)  # Nova penalidade
                     )
                     
                     recursos_coletados_anterior = robo.recursos_coletados
                     
-                    if sem_energia or ambiente.passo() or tempo_sem_progresso > 50:  # Limite de tempo sem progresso
+                    if sem_energia or ambiente.passo() or tempo_sem_progresso > 50:
                         break
                 
                 fitness += max(0, fitness_tentativa)
             
-            individuo.fitness = fitness / 8  # Média das 8 tentativas
+            individuo.fitness = fitness / 12  # Média das 12 tentativas
             
             if individuo.fitness > self.melhor_fitness:
                 self.melhor_fitness = individuo.fitness
