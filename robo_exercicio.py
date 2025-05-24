@@ -5,6 +5,10 @@ import matplotlib.patches as patches
 import matplotlib.animation as animation
 import json
 import argparse
+import multiprocessing as mp
+from functools import partial, lru_cache
+from itertools import combinations
+import time
 
 # =====================================================================
 # PARTE 1: ESTRUTURA DA SIMULAÇÃO (NÃO MODIFICAR)
@@ -642,40 +646,82 @@ class IndividuoPG:
 
         if no['tipo'] == 'folha':
             if 'valor' in no:
-                return no['valor']
+                return float(np.clip(no['valor'], -1e6, 1e6))
             elif 'variavel' in no:
-                return sensores[no['variavel']]
+                v = sensores[no['variavel']]
+                return float(np.clip(v, -1e6, 1e6))
 
         esquerda = self.avaliar_no(no['esquerda'], sensores)
         direita = self.avaliar_no(no['direita'], sensores) if no['direita'] is not None else 0
         op = no['operador']
 
         try:
-            if op == 'abs': return abs(esquerda)
-            elif op == 'not': return 1.0 if esquerda <= 0 else 0.0
-            elif op == 'if_positivo': return direita if esquerda > 0 else 0
-            elif op == 'if_negativo': return direita if esquerda < 0 else 0
-            elif op == '+': return esquerda + direita
-            elif op == '-': return esquerda - direita
-            elif op == '*': return esquerda * direita
-            elif op == '/': return esquerda / direita if direita != 0 else 0
-            elif op == 'max': return max(esquerda, direita)
-            elif op == 'min': return min(esquerda, direita)
-            elif op == 'gt': return 1.0 if esquerda > direita else 0.0
-            elif op == 'lt': return 1.0 if esquerda < direita else 0.0
-            elif op == 'eq': return 1.0 if abs(esquerda - direita) < 1e-5 else 0.0
-            elif op == 'and': return 1.0 if esquerda > 0 and direita > 0 else 0.0
-            elif op == 'or': return 1.0 if esquerda > 0 or direita > 0 else 0.0
-            elif op == 'clip': return np.clip(esquerda, -1, 1)
-            elif op == 'sin': return np.sin(esquerda)
-            elif op == 'cos': return np.cos(esquerda)
-            elif op == 'tanh': return np.tanh(esquerda)
-            elif op == 'log': return np.log(abs(esquerda)) if abs(esquerda) > 0 else 0
-            elif op == 'sigmoid': return 1 / (1 + np.exp(-esquerda))  # Novo operador
-            elif op == 'relu': return max(0, esquerda)  # Novo operador
-            elif op == 'softplus': return np.log(1 + np.exp(esquerda))  # Novo operador
-        except:
-            return 0
+            if op == 'abs':
+                return float(np.abs(esquerda))
+            elif op == 'not':
+                return 1.0 if esquerda <= 0 else 0.0
+            elif op == 'if_positivo':
+                return direita if esquerda > 0 else 0
+            elif op == 'if_negativo':
+                return direita if esquerda < 0 else 0
+            elif op == '+':
+                r = esquerda + direita
+                return float(np.clip(r, -1e6, 1e6))
+            elif op == '-':
+                r = esquerda - direita
+                return float(np.clip(r, -1e6, 1e6))
+            elif op == '*':
+                r = esquerda * direita
+                return float(np.clip(r, -1e6, 1e6))
+            elif op == '/':
+                if direita == 0:
+                    return 0.0
+                r = esquerda / direita
+                return float(np.clip(r, -1e6, 1e6))
+            elif op == 'max':
+                return float(np.clip(max(esquerda, direita), -1e6, 1e6))
+            elif op == 'min':
+                return float(np.clip(min(esquerda, direita), -1e6, 1e6))
+            elif op == 'gt':
+                return 1.0 if esquerda > direita else 0.0
+            elif op == 'lt':
+                return 1.0 if esquerda < direita else 0.0
+            elif op == 'eq':
+                return 1.0 if abs(esquerda - direita) < 1e-5 else 0.0
+            elif op == 'and':
+                return 1.0 if esquerda > 0 and direita > 0 else 0.0
+            elif op == 'or':
+                return 1.0 if esquerda > 0 or direita > 0 else 0.0
+            elif op == 'clip':
+                return float(np.clip(esquerda, -1, 1))
+            elif op == 'sin':
+                return float(np.clip(np.sin(np.clip(esquerda, -1e3, 1e3)), -1, 1))
+            elif op == 'cos':
+                return float(np.clip(np.cos(np.clip(esquerda, -1e3, 1e3)), -1, 1))
+            elif op == 'tanh':
+                return float(np.tanh(np.clip(esquerda, -20, 20)))
+            elif op == 'log':
+                v = np.abs(esquerda)
+                if v > 0:
+                    return float(np.clip(np.log(v), -1e6, 1e6))
+                else:
+                    return 0.0
+            elif op == 'sigmoid':
+                x = np.clip(esquerda, -100, 100)
+                return float(1 / (1 + np.exp(-x)))
+            elif op == 'relu':
+                return float(np.clip(max(0, esquerda), 0, 1e6))
+            elif op == 'softplus':
+                x = np.clip(esquerda, -100, 100)
+                if x > 100:
+                    return float(x)
+                elif x < -100:
+                    return 0.0
+                else:
+                    return float(np.clip(np.log1p(np.exp(x)), 0, 1e6))
+        except Exception as e:
+            # Opcional: print(f"Erro matemático: {op}({esquerda}, {direita}) -> {e}")
+            return 0.0
 
     def mutacao(self, probabilidade=0.1):
         # Mutação adaptativa baseada na idade
@@ -742,7 +788,7 @@ class IndividuoPG:
 
 
 class ProgramacaoGenetica:
-    def __init__(self, tamanho_populacao=200, profundidade=5):  # Aumentado população e profundidade
+    def __init__(self, tamanho_populacao=200, profundidade=5):
         self.tamanho_populacao = tamanho_populacao
         self.profundidade = profundidade
         self.populacao = [IndividuoPG(profundidade) for _ in range(tamanho_populacao)]
@@ -752,31 +798,56 @@ class ProgramacaoGenetica:
         self.historico_diversidade = []
         
         # Parâmetros de evolução otimizados
-        self.taxa_elitismo = 0.15    # Reduzido para 15% para manter mais diversidade
-        self.taxa_mutacao = 0.3      # Aumentado para 30% para mais exploração
-        self.tamanho_torneio = 7     # Aumentado para 7 para seleção mais rigorosa
-        self.pressao_seletiva = 0.9  # Aumentada para 90% para seleção mais forte
-        self.taxa_crossover = 0.9    # Ajustado para 90% para balancear com mutação
+        self.taxa_elitismo = 0.15
+        self.taxa_mutacao = 0.3
+        self.tamanho_torneio = 7
+        self.pressao_seletiva = 0.9
+        self.taxa_crossover = 0.9
+        
+        # Número de processos para paralelização
+        self.num_processos = max(1, mp.cpu_count() - 1)
+        
+        # Cache para ambiente e robô
+        self._ambiente_cache = None
+        self._robo_cache = None
+        
+        # Constantes de fitness pré-calculadas
+        self._fitness_constants = {
+            'penalidade_sem_meta': 2000,
+            'penalidade_sem_energia': 800,
+            'penalidade_sem_recursos': 500,
+            'penalidade_poucos_recursos': 1000,
+            'bonus_coleta': 1500,
+            'bonus_meta': 800,
+            'bonus_recurso': 500,
+            'bonus_energia': 15,
+            'bonus_todos_recursos': 3000,
+            'bonus_meta_com_recursos': 2000,
+            'bonus_completude': 5000,
+            'penalidade_colisao': 300,
+            'penalidade_sem_progresso': 15
+        }
     
-    def calcular_diversidade(self):
-        # Calcula a diversidade da população baseada na distância média entre indivíduos
-        diversidade = 0
-        for i in range(len(self.populacao)):
-            for j in range(i + 1, len(self.populacao)):
-                # Compara as árvores de aceleração e rotação
-                dist_acel = self.distancia_arvores(
-                    self.populacao[i].arvore_aceleracao,
-                    self.populacao[j].arvore_aceleracao
-                )
-                dist_rot = self.distancia_arvores(
-                    self.populacao[i].arvore_rotacao,
-                    self.populacao[j].arvore_rotacao
-                )
-                diversidade += (dist_acel + dist_rot) / 2
-        return diversidade / (len(self.populacao) * (len(self.populacao) - 1) / 2)
+    @property
+    def ambiente(self):
+        """Lazy initialization of environment"""
+        if self._ambiente_cache is None:
+            self._ambiente_cache = Ambiente()
+        return self._ambiente_cache
     
-    def distancia_arvores(self, arvore1, arvore2):
-        # Calcula a distância entre duas árvores
+    @property
+    def robo(self):
+        """Lazy initialization of robot"""
+        if self._robo_cache is None:
+            self._robo_cache = Robo(self.ambiente.largura // 2, self.ambiente.altura // 2)
+        return self._robo_cache
+    
+    @lru_cache(maxsize=1024)
+    def distancia_arvores(self, arvore1_str, arvore2_str):
+        """Versão otimizada do cálculo de distância entre árvores usando cache"""
+        arvore1 = json.loads(arvore1_str)
+        arvore2 = json.loads(arvore2_str)
+        
         if arvore1['tipo'] != arvore2['tipo']:
             return 1.0
         
@@ -787,100 +858,144 @@ class ProgramacaoGenetica:
                 return 0.0 if arvore1['variavel'] == arvore2['variavel'] else 1.0
             return 1.0
         
-        dist_esq = self.distancia_arvores(arvore1['esquerda'], arvore2['esquerda'])
+        dist_esq = self.distancia_arvores(
+            json.dumps(arvore1['esquerda']),
+            json.dumps(arvore2['esquerda'])
+        )
+        
         if arvore1['direita'] is None and arvore2['direita'] is None:
             dist_dir = 0.0
         elif arvore1['direita'] is None or arvore2['direita'] is None:
             dist_dir = 1.0
         else:
-            dist_dir = self.distancia_arvores(arvore1['direita'], arvore2['direita'])
+            dist_dir = self.distancia_arvores(
+                json.dumps(arvore1['direita']),
+                json.dumps(arvore2['direita'])
+            )
         
         return (dist_esq + dist_dir) / 2 + (0.0 if arvore1['operador'] == arvore2['operador'] else 0.5)
     
-    def avaliar_populacao(self):
-        ambiente = Ambiente()
-        robo = Robo(ambiente.largura // 2, ambiente.altura // 2)
+    def calcular_diversidade_paralela(self, chunk):
+        """Calcula diversidade para um chunk da população em paralelo"""
+        diversidade = 0
+        for i, j in combinations(chunk, 2):
+            dist_acel = self.distancia_arvores(
+                json.dumps(i.arvore_aceleracao),
+                json.dumps(j.arvore_aceleracao)
+            )
+            dist_rot = self.distancia_arvores(
+                json.dumps(i.arvore_rotacao),
+                json.dumps(j.arvore_rotacao)
+            )
+            diversidade += (dist_acel + dist_rot) / 2
+        return diversidade
+    
+    def calcular_diversidade(self):
+        """Calcula a diversidade da população usando paralelização"""
+        # Dividir população em chunks para processamento paralelo
+        chunk_size = max(1, len(self.populacao) // self.num_processos)
+        chunks = [self.populacao[i:i + chunk_size] for i in range(0, len(self.populacao), chunk_size)]
         
-        for individuo in self.populacao:
-            fitness = 0
+        with mp.Pool(processes=self.num_processos) as pool:
+            diversidades = pool.map(self.calcular_diversidade_paralela, chunks)
+        
+        total_diversidade = sum(diversidades)
+        total_comparacoes = len(self.populacao) * (len(self.populacao) - 1) / 2
+        return total_diversidade / total_comparacoes
+    
+    def avaliar_individuo(self, individuo, num_tentativas=8):
+        """Versão otimizada da avaliação de indivíduo"""
+        fitness_total = 0
+        recursos_totais = len(self.ambiente.recursos)
+        fitness_array = np.zeros(num_tentativas)
+        penalidade_parede = 1000  # penalidade extra para colisão com parede
+        bonus_coleta_incremental = 2000  # bônus por cada coleta nova
+        bonus_meta_final = 8000  # bônus maior para atingir meta após coletar todos recursos
+        for tentativa in range(num_tentativas):
+            self.ambiente.reset()
+            x_inicial, y_inicial = self.ambiente.posicao_segura(self.robo.raio)
+            self.robo.reset(x_inicial, y_inicial)
+            ultima_distancia_meta = float('inf')
+            ultima_distancia_recurso = float('inf')
+            tempo_sem_progresso = 0
+            recursos_coletados_anterior = 0
+            recursos_coletados_set = set()
+            meta_atingida_valida = False
+            penalidade_colisao_parede = 0
+            while True:
+                sensores = self.robo.get_sensores(self.ambiente)
+                aceleracao = np.clip(individuo.avaliar(sensores, 'aceleracao'), -1, 1)
+                rotacao = np.clip(individuo.avaliar(sensores, 'rotacao'), -0.5, 0.5)
+                distancia_meta_atual = sensores['dist_meta']
+                distancia_recurso_atual = sensores['dist_recurso']
+                if np.all([distancia_meta_atual >= ultima_distancia_meta, distancia_recurso_atual >= ultima_distancia_recurso]):
+                    tempo_sem_progresso += 1
+                else:
+                    tempo_sem_progresso = 0
+                ultima_distancia_meta = distancia_meta_atual
+                ultima_distancia_recurso = distancia_recurso_atual
+                # Detectar colisão com parede
+                colidiu_parede = False
+                novo_x = self.robo.x + self.robo.velocidade * np.cos(self.robo.angulo)
+                novo_y = self.robo.y + self.robo.velocidade * np.sin(self.robo.angulo)
+                if (novo_x - self.robo.raio < 0 or novo_x + self.robo.raio > self.ambiente.largura or
+                    novo_y - self.robo.raio < 0 or novo_y + self.robo.raio > self.ambiente.altura):
+                    colidiu_parede = True
+                sem_energia = self.robo.mover(aceleracao, rotacao, self.ambiente)
+                # Recompensa incremental por cada coleta nova
+                if self.robo.recursos_coletados > recursos_coletados_anterior:
+                    fitness_incremento = (self.robo.recursos_coletados - recursos_coletados_anterior) * bonus_coleta_incremental
+                else:
+                    fitness_incremento = 0
+                recursos_coletados_anterior = self.robo.recursos_coletados
+                # Penalidade extra para colisão com parede
+                if colidiu_parede:
+                    penalidade_colisao_parede += penalidade_parede
+                # Só considerar meta atingida se todos recursos foram coletados
+                if (not meta_atingida_valida and self.robo.meta_atingida and self.robo.recursos_coletados == recursos_totais):
+                    meta_atingida_valida = True
+                # Cálculo de fitness
+                fitness_tentativa = (
+                    self.robo.recursos_coletados * 2000 +
+                    fitness_incremento +
+                    (bonus_meta_final if meta_atingida_valida else 0) +
+                    (self._fitness_constants['bonus_meta'] if distancia_meta_atual < ultima_distancia_meta else 0) +
+                    (self._fitness_constants['bonus_recurso'] if distancia_recurso_atual < ultima_distancia_recurso else 0) +
+                    (self.robo.energia * self._fitness_constants['bonus_energia']) +
+                    (self._fitness_constants['bonus_todos_recursos'] if self.robo.recursos_coletados == recursos_totais else 0) +
+                    (self._fitness_constants['bonus_meta_com_recursos'] if meta_atingida_valida and self.robo.recursos_coletados > 0 else 0) +
+                    (self._fitness_constants['bonus_completude'] if self.robo.recursos_coletados == recursos_totais and meta_atingida_valida else 0) -
+                    (self.robo.colisoes * self._fitness_constants['penalidade_colisao']) -
+                    (tempo_sem_progresso * self._fitness_constants['penalidade_sem_progresso']) -
+                    (self._fitness_constants['penalidade_sem_meta'] if not meta_atingida_valida else 0) -
+                    (self._fitness_constants['penalidade_sem_energia'] if self.robo.energia <= 0 else 0) -
+                    (self._fitness_constants['penalidade_sem_recursos'] if self.robo.recursos_coletados == 0 else 0) -
+                    (self._fitness_constants['penalidade_poucos_recursos'] if self.robo.recursos_coletados < recursos_totais/2 else 0) -
+                    penalidade_colisao_parede
+                )
+                fitness_tentativa = float(np.nan_to_num(fitness_tentativa, nan=0.0, posinf=1e6, neginf=-1e6))
+                fitness_array[tentativa] = max(0, fitness_tentativa)
+                if sem_energia or self.ambiente.passo() or tempo_sem_progresso > 50 or meta_atingida_valida:
+                    break
+        return np.mean(fitness_array)
+    
+    def avaliar_populacao(self):
+        """Avalia a população em paralelo com melhor gerenciamento de recursos"""
+        # Usar um pool de processos com melhor gerenciamento de memória
+        with mp.Pool(processes=self.num_processos, maxtasksperchild=10) as pool:
+            # Avaliar indivíduos em paralelo com chunks para melhor performance
+            chunk_size = max(1, len(self.populacao) // self.num_processos)
+            fitness_values = []
             
-            # Simular 12 tentativas para melhor avaliação (aumentado de 8 para 12)
-            for _ in range(12):
-                ambiente.reset()
-                x_inicial, y_inicial = ambiente.posicao_segura(robo.raio)
-                robo.reset(x_inicial, y_inicial)
-                
-                # Variáveis para tracking de progresso
-                ultima_distancia_meta = float('inf')
-                ultima_distancia_recurso = float('inf')
-                tempo_sem_progresso = 0
-                recursos_coletados_anterior = 0
-                recursos_totais = len(ambiente.recursos)
-                
-                while True:
-                    sensores = robo.get_sensores(ambiente)
-                    aceleracao = individuo.avaliar(sensores, 'aceleracao')
-                    rotacao = individuo.avaliar(sensores, 'rotacao')
-                    
-                    aceleracao = max(-1, min(1, aceleracao))
-                    rotacao = max(-0.5, min(0.5, rotacao))
-                    
-                    # Verificar progresso
-                    distancia_meta_atual = sensores['dist_meta']
-                    distancia_recurso_atual = sensores['dist_recurso']
-                    
-                    # Penalizar falta de progresso
-                    if distancia_meta_atual >= ultima_distancia_meta and distancia_recurso_atual >= ultima_distancia_recurso:
-                        tempo_sem_progresso += 1
-                    else:
-                        tempo_sem_progresso = 0
-                    
-                    ultima_distancia_meta = distancia_meta_atual
-                    ultima_distancia_recurso = distancia_recurso_atual
-                    
-                    sem_energia = robo.mover(aceleracao, rotacao, ambiente)
-                    
-                    # Fitness em tempo real com pesos ajustados
-                    fitness_tentativa = (
-                        # Pontuação base (aumentada)
-                        robo.recursos_coletados * 2000 +  # Aumentado de 1500 para 2000
-                        (4000 if robo.meta_atingida else 0) +  # Aumentado de 3000 para 4000
-                        
-                        # Bônus por progresso (aumentado)
-                        (1500 if robo.recursos_coletados > recursos_coletados_anterior else 0) +  # Aumentado de 1000 para 1500
-                        (800 if distancia_meta_atual < ultima_distancia_meta else 0) +  # Aumentado de 500 para 800
-                        (500 if distancia_recurso_atual < ultima_distancia_recurso else 0) +  # Aumentado de 300 para 500
-                        
-                        # Bônus por eficiência (aumentado)
-                        (robo.energia * 15) +  # Aumentado de 10 para 15
-                        (3000 if robo.recursos_coletados == recursos_totais else 0) +  # Aumentado de 2000 para 3000
-                        (2000 if robo.meta_atingida and robo.recursos_coletados > 0 else 0) +  # Aumentado de 1000 para 2000
-                        
-                        # Bônus por completude
-                        (5000 if robo.recursos_coletados == recursos_totais and robo.meta_atingida else 0)  # Novo bônus
-                    )
-                    
-                    # Penalidades (ajustadas)
-                    fitness_tentativa -= (
-                        robo.colisoes * 300 +  # Aumentado de 200 para 300
-                        (tempo_sem_progresso * 15) +  # Aumentado de 10 para 15
-                        (2000 if not robo.meta_atingida else 0) +  # Aumentado de 1000 para 2000
-                        (800 if robo.energia <= 0 else 0) +  # Aumentado de 500 para 800
-                        (500 if robo.recursos_coletados == 0 else 0) +  # Aumentado de 300 para 500
-                        (1000 if robo.recursos_coletados < recursos_totais/2 else 0)  # Nova penalidade
-                    )
-                    
-                    recursos_coletados_anterior = robo.recursos_coletados
-                    
-                    if sem_energia or ambiente.passo() or tempo_sem_progresso > 50:
-                        break
-                
-                fitness += max(0, fitness_tentativa)
-            
-            individuo.fitness = fitness / 12  # Média das 12 tentativas
-            
-            if individuo.fitness > self.melhor_fitness:
-                self.melhor_fitness = individuo.fitness
+            for chunk in np.array_split(self.populacao, len(self.populacao) // chunk_size + 1):
+                chunk_fitness = pool.map(self.avaliar_individuo, chunk)
+                fitness_values.extend(chunk_fitness)
+        
+        # Atualizar fitness dos indivíduos de forma vetorizada
+        for individuo, fitness in zip(self.populacao, fitness_values):
+            individuo.fitness = fitness
+            if fitness > self.melhor_fitness:
+                self.melhor_fitness = fitness
                 self.melhor_individuo = individuo
     
     def selecionar(self):
