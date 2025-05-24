@@ -161,10 +161,14 @@ class Ambiente:
     
     def verificar_atingir_meta(self, x, y, raio):
         if not self.meta_atingida:
-            distancia = np.sqrt((x - self.meta['x'])**2 + (y - self.meta['y'])**2)
-            if distancia < raio + self.meta['raio']:
-                self.meta_atingida = True
-                return True
+            # Verifica se todos os recursos foram coletados
+            todos_recursos_coletados = all(recurso['coletado'] for recurso in self.recursos)
+            
+            if todos_recursos_coletados:
+                distancia = np.sqrt((x - self.meta['x'])**2 + (y - self.meta['y'])**2)
+                if distancia < raio + self.meta['raio']:
+                    self.meta_atingida = True
+                    return True
         return False
     
     def reset(self):
@@ -224,9 +228,11 @@ class Robo:
         self.recursos_coletados = 0
         self.colisoes = 0
         self.distancia_percorrida = 0
-        self.tempo_parado = 0  # Novo: contador de tempo parado
-        self.ultima_posicao = (x, y)  # Novo: última posição conhecida
-        self.meta_atingida = False  # Novo: flag para controlar se a meta foi atingida
+        self.tempo_parado = 0
+        self.ultima_posicao = (x, y)
+        self.meta_atingida = False
+        self.velocidade_maxima = 8.0  # Velocidade máxima reduzida para melhor controle
+        self.aceleracao_maxima = 0.5  # Aceleração máxima reduzida para movimentos mais suaves
     
     def reset(self, x, y):
         self.x = x
@@ -249,35 +255,43 @@ class Robo:
         distancia_movimento = np.sqrt((self.x - self.ultima_posicao[0])**2 + (self.y - self.ultima_posicao[1])**2)
         if distancia_movimento < 0.1:  # Se moveu menos de 0.1 unidades
             self.tempo_parado += 1
-            # Forçar movimento após ficar parado por muito tempo
-            if self.tempo_parado > 5:  # Após 5 passos parado
-                aceleracao = max(0.2, aceleracao)  # Força aceleração mínima
-                rotacao = random.uniform(-0.2, 0.2)  # Pequena rotação aleatória
+            # Se ficar parado por muito tempo, força um movimento
+            if self.tempo_parado > 3:
+                self.angulo += np.pi/2  # Gira 90 graus
+                self.velocidade = self.velocidade_maxima * 0.5  # Recupera metade da velocidade
+                self.tempo_parado = 0
         else:
             self.tempo_parado = 0
         
-        # Atualizar velocidade
+        # Atualizar velocidade com limite de aceleração
+        aceleracao = np.clip(aceleracao, -self.aceleracao_maxima, self.aceleracao_maxima)
         self.velocidade += aceleracao
-        self.velocidade = max(0.1, min(5, self.velocidade))  # Velocidade mínima de 0.1
+        
+        # Limitar velocidade
+        self.velocidade = np.clip(self.velocidade, 0, self.velocidade_maxima)
         
         # Calcular nova posição
         novo_x = self.x + self.velocidade * np.cos(self.angulo)
         novo_y = self.y + self.velocidade * np.sin(self.angulo)
         
         # Verificar colisão
-        if ambiente.verificar_colisao(novo_x, novo_y, self.raio):
-            self.colisoes += 1
-            self.velocidade = 0.1  # Reduz velocidade drasticamente
-            self.angulo += random.uniform(np.pi/2, np.pi)  # Gira bruscamente para sair da colisão
-
-        else:
-            # Atualizar posição
-            self.distancia_percorrida += np.sqrt((novo_x - self.x)**2 + (novo_y - self.y)**2)
+        if not ambiente.verificar_colisao(novo_x, novo_y, self.raio):
+            self.ultima_posicao = (self.x, self.y)
             self.x = novo_x
             self.y = novo_y
-        
-        # Atualizar última posição conhecida
-        self.ultima_posicao = (self.x, self.y)
+            self.distancia_percorrida += self.velocidade
+        else:
+            self.colisoes += 1
+            # Em vez de parar, ajusta o ângulo e mantém uma velocidade mínima
+            self.angulo += np.pi/4  # Gira 45 graus
+            self.velocidade = self.velocidade_maxima * 0.3  # Mantém 30% da velocidade máxima
+            # Tenta se mover na nova direção
+            novo_x = self.x + self.velocidade * np.cos(self.angulo)
+            novo_y = self.y + self.velocidade * np.sin(self.angulo)
+            if not ambiente.verificar_colisao(novo_x, novo_y, self.raio):
+                self.x = novo_x
+                self.y = novo_y
+                self.distancia_percorrida += self.velocidade
         
         # Verificar coleta de recursos
         recursos_coletados = ambiente.verificar_coleta_recursos(self.x, self.y, self.raio)
