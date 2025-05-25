@@ -231,8 +231,8 @@ class Robo:
         self.tempo_parado = 0
         self.ultima_posicao = (x, y)
         self.meta_atingida = False
-        self.velocidade_maxima = 8.0  # Velocidade máxima reduzida para melhor controle
-        self.aceleracao_maxima = 0.5  # Aceleração máxima reduzida para movimentos mais suaves
+        self.velocidade_maxima = 12.0  # Velocidade máxima ajustada para 12.0
+        self.aceleracao_maxima = 0.8  # Aceleração máxima ajustada para 0.8
     
     def reset(self, x, y):
         self.x = x
@@ -258,7 +258,7 @@ class Robo:
             # Se ficar parado por muito tempo, força um movimento
             if self.tempo_parado > 3:
                 self.angulo += np.pi/2  # Gira 90 graus
-                self.velocidade = self.velocidade_maxima * 0.5  # Recupera metade da velocidade
+                self.velocidade = self.velocidade_maxima * 0.6  # Recupera 60% da velocidade
                 self.tempo_parado = 0
         else:
             self.tempo_parado = 0
@@ -284,7 +284,7 @@ class Robo:
             self.colisoes += 1
             # Em vez de parar, ajusta o ângulo e mantém uma velocidade mínima
             self.angulo += np.pi/4  # Gira 45 graus
-            self.velocidade = self.velocidade_maxima * 0.3  # Mantém 30% da velocidade máxima
+            self.velocidade = self.velocidade_maxima * 0.4  # Mantém 40% da velocidade máxima
             # Tenta se mover na nova direção
             novo_x = self.x + self.velocidade * np.cos(self.angulo)
             novo_y = self.y + self.velocidade * np.sin(self.angulo)
