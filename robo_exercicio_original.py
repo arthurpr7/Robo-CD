@@ -546,7 +546,7 @@ class IndividuoPG:
             return self.criar_folha()
         
         # OPERADORES DISPONÍVEIS PARA O ALUNO MODIFICAR
-        operador = random.choice(['+', '-', '*', '/', 'max', 'min', 'abs', 'if_positivo', 'if_negativo'])
+        operador = random.choice(['+', '-', '*', '/', 'max', 'min', 'abs', 'if_positivo', 'if_negativo', 'round']) # Adiciona 'round'
         if operador in ['+', '-', '*', '/']:
             return {
                 'tipo': 'operador',
@@ -568,6 +568,13 @@ class IndividuoPG:
                 'esquerda': IndividuoPG(self.profundidade - 1).arvore_aceleracao,
                 'direita': None
             }
+        elif operador == 'round': # Novo operador
+            return {
+                'tipo': 'operador',
+                'operador': operador,
+                'esquerda': IndividuoPG(self.profundidade - 1).arvore_aceleracao,
+                'direita': None # Operador unário
+            }
         else:  # if_positivo ou if_negativo
             return {
                 'tipo': 'operador',
@@ -578,7 +585,7 @@ class IndividuoPG:
     
     def criar_folha(self):
         # VARIÁVEIS DISPONÍVEIS PARA O ALUNO MODIFICAR
-        tipo = random.choice(['constante', 'dist_recurso', 'dist_obstaculo', 'dist_meta', 'angulo_recurso', 'angulo_meta', 'energia', 'velocidade', 'meta_atingida'])
+       tipo = random.choice(['constante', 'dist_recurso', 'dist_obstaculo', 'dist_meta', 'angulo_recurso', 'angulo_meta', 'energia', 'velocidade', 'meta_atingida', 'passos_decorridos']) # Adiciona 'passos_decorridos'
         if tipo == 'constante':
             return {
                 'tipo': 'folha',
@@ -606,6 +613,8 @@ class IndividuoPG:
         
         if no['operador'] == 'abs':
             return abs(self.avaliar_no(no['esquerda'], sensores))
+        elif no['operador'] == 'round': # Implementação do novo operador
+            return round(self.avaliar_no(no['esquerda'], sensores))
         elif no['operador'] == 'if_positivo':
             valor = self.avaliar_no(no['esquerda'], sensores)
             if valor > 0:
@@ -687,8 +696,8 @@ class IndividuoPG:
 class ProgramacaoGenetica:
     def __init__(self, tamanho_populacao=50, profundidade=3):
         # PARÂMETROS PARA O ALUNO MODIFICAR
-        self.tamanho_populacao = tamanho_populacao
-        self.profundidade = profundidade
+        self.tamanho_populacao = 60  # Aumenta ligeiramente o tamanho da população
+        self.profundidade = 3 # Mantém a profundidade ou altera para 4, dependendo do que já está
         self.populacao = [IndividuoPG(profundidade) for _ in range(tamanho_populacao)]
         self.melhor_individuo = None
         self.melhor_fitness = float('-inf')
@@ -727,15 +736,15 @@ class ProgramacaoGenetica:
                 
                 # Calcular fitness
                 fitness_tentativa = (
-                    robo.recursos_coletados * 100 +  # Pontos por recursos coletados
-                    robo.distancia_percorrida * 0.1 -  # Pontos por distância percorrida
-                    robo.colisoes * 50 -  # Penalidade por colisões
-                    (100 - robo.energia) * 0.5  # Penalidade por consumo de energia
+                    robo.recursos_coletados * 110 +  # Aumenta um pouco os pontos por recursos
+                    robo.distancia_percorrida * 0.12 - # Aumenta um pouco os pontos por distância
+                    robo.colisoes * 60 -  # Aumenta a penalidade por colisões
+                    (100 - robo.energia) * 0.4  # Diminui um pouco a penalidade por consumo de energia
                 )
                 
                 # Adicionar pontos extras por atingir a meta
                 if robo.meta_atingida:
-                    fitness_tentativa += 500  # Pontos extras por atingir a meta
+                    fitness_tentativa += 550  # Um bônus ligeiramente maior pela meta
                 
                 fitness += max(0, fitness_tentativa)
             
@@ -749,7 +758,7 @@ class ProgramacaoGenetica:
     def selecionar(self):
         # MÉTODO DE SELEÇÃO PARA O ALUNO MODIFICAR
         # Seleção por torneio
-        tamanho_torneio = 3  # TAMANHO DO TORNEIO PARA O ALUNO MODIFICAR
+        tamanho_torneio = 4  # Aumenta o tamanho do torneio para 4 (era 3)
         selecionados = []
         
         for _ in range(self.tamanho_populacao):
@@ -759,7 +768,7 @@ class ProgramacaoGenetica:
         
         return selecionados
     
-    def evoluir(self, n_geracoes=50):
+    def evoluir(self, n_geracoes=60):
         # NÚMERO DE GERAÇÕES PARA O ALUNO MODIFICAR
         for geracao in range(n_geracoes):
             print(f"Geração {geracao + 1}/{n_geracoes}")
@@ -784,7 +793,7 @@ class ProgramacaoGenetica:
             while len(nova_populacao) < self.tamanho_populacao:
                 pai1, pai2 = random.sample(selecionados, 2)
                 filho = pai1.crossover(pai2)
-                filho.mutacao(probabilidade=0.1)  # PROBABILIDADE DE MUTAÇÃO PARA O ALUNO MODIFICAR
+                filho.mutacao(probabilidade=0.12)  # PROBABILIDADE DE MUTAÇÃO PARA O ALUNO MODIFICAR
                 nova_populacao.append(filho)
             
             self.populacao = nova_populacao
