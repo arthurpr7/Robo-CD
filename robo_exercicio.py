@@ -1097,7 +1097,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulação de robô com programação genética")
     parser.add_argument('--populacao', type=int, default=100, help='Tamanho da população (padrão: 10)')
     parser.add_argument('--profundidade', type=int, default=4, help='Profundidade da árvore (padrão: 4)')
-    parser.add_argument('--geracoes', type=int, default=10, help='Número de gerações (padrão: 10)')
+    parser.add_argument('--geracoes', type=int, default=50, help='Número de gerações (padrão: 50)')
     args = parser.parse_args()
 
     # Usar argumentos ou valores default
