@@ -585,7 +585,7 @@ class IndividuoPG:
     
     def criar_folha(self):
         # VARIÁVEIS DISPONÍVEIS PARA O ALUNO MODIFICAR
-       tipo = random.choice(['constante', 'dist_recurso', 'dist_obstaculo', 'dist_meta', 'angulo_recurso', 'angulo_meta', 'energia', 'velocidade', 'meta_atingida', 'passos_decorridos']) # Adiciona 'passos_decorridos'
+        tipo = random.choice(['constante', 'dist_recurso', 'dist_obstaculo', 'dist_meta', 'angulo_recurso', 'angulo_meta', 'energia', 'velocidade', 'meta_atingida', 'passos_decorridos']) # Adiciona 'passos_decorridos'
         if tipo == 'constante':
             return {
                 'tipo': 'folha',

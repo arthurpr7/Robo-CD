@@ -1,3 +1,7 @@
+# Simulador de Robô com Programação Genética
+# O robô deve coletar recursos e atingir a meta evitando obstáculos
+# Uso: python robo_exercicio.py [--populacao 100] [--profundidade 4] [--geracoes 50]
+
 import numpy as np
 import random
 import matplotlib.pyplot as plt
@@ -11,12 +15,12 @@ from itertools import combinations
 import time
 
 # =====================================================================
-# PARTE 1: ESTRUTURA DA SIMULAÇÃO (NÃO MODIFICAR)
-# Esta parte contém a estrutura básica da simulação, incluindo o ambiente,
-# o robô e a visualização. Não é recomendado modificar esta parte.
+# PARTE 1: AMBIENTE E ROBÔ
+# Contém o ambiente de simulação e o robô com seus sensores
 # =====================================================================
 
 class Ambiente:
+    # Cria o ambiente com obstáculos, recursos e meta
     def __init__(self, largura=800, altura=600, num_obstaculos=5, num_recursos=5):
         self.largura = largura
         self.altura = altura
@@ -32,7 +36,7 @@ class Ambiente:
         self.meta = self.gerar_meta()  # Adicionando a meta
     
     def verificar_sobreposicao(self, x, y, raio=0, largura=0, altura=0):
-        """Verifica se uma posição está sobrepondo outros elementos"""
+        # Verifica se uma posição colide com outros elementos
         # Verificar sobreposição com obstáculos
         for obstaculo in self.obstaculos:
             if (x + raio > obstaculo['x'] and 
@@ -56,6 +60,7 @@ class Ambiente:
         return False
     
     def gerar_obstaculos(self, num_obstaculos):
+        # Gera obstáculos aleatórios sem sobreposição
         obstaculos = []
         max_tentativas = 100
         
@@ -91,6 +96,7 @@ class Ambiente:
         return obstaculos
     
     def gerar_recursos(self, num_recursos):
+        # Gera recursos (pontos verdes) para o robô coletar
         recursos = []
         max_tentativas = 100
         
@@ -135,6 +141,7 @@ class Ambiente:
         }
     
     def verificar_colisao(self, x, y, raio):
+        # Verifica se o robô colide com bordas ou obstáculos
         # Verificar colisão com as bordas
         if x - raio < 0 or x + raio > self.largura or y - raio < 0 or y + raio > self.altura:
             return True
@@ -218,6 +225,7 @@ class Ambiente:
         return self.largura // 2, self.altura // 2
 
 class Robo:
+    # Representa o robô com posição, sensores e movimento
     def __init__(self, x, y, raio=15):
         self.x = x
         self.y = y
@@ -248,6 +256,7 @@ class Robo:
         self.meta_atingida = False
     
     def mover(self, aceleracao, rotacao, ambiente):
+        # Move o robô baseado na aceleração e rotação
         # Atualizar ângulo
         self.angulo += rotacao
         
@@ -314,6 +323,7 @@ class Robo:
         return self.energia <= 0
     
     def get_sensores(self, ambiente):
+        # Retorna informações dos sensores do robô
         # Distância até o recurso mais próximo
         dist_recurso = float('inf')
         for recurso in ambiente.recursos:
@@ -593,14 +603,14 @@ class Simulador:
         return self.frames[frame_idx]
 
 # =====================================================================
-# PARTE 2: ALGORITMO GENÉTICO (PARA O VOCÊ MODIFICAR)
-# Esta parte contém a implementação do algoritmo genético.
-# Deve modificar os parâmetros e a lógica para melhorar o desempenho.
+# PARTE 2: ALGORITMO GENÉTICO
+# Implementa a programação genética para evoluir o comportamento do robô
 # =====================================================================
 
 # ATUALIZAÇÃO: Classe IndividuoPG com operadores booleanos e comparadores adicionados
 
 class IndividuoPG:
+    # Representa um indivíduo (robô) com árvores de decisão para aceleração e rotação
     def __init__(self, profundidade=3):
         self.profundidade = profundidade
         self.arvore_aceleracao = self.criar_arvore_aleatoria()
@@ -609,6 +619,7 @@ class IndividuoPG:
         self.idade = 0  # Novo: idade do indivíduo para controle de diversidade
 
     def criar_arvore_aleatoria(self):
+        # Cria uma árvore de decisão aleatória
         if self.profundidade == 0:
             return self.criar_folha()
 
